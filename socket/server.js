@@ -4,7 +4,6 @@ var C = xbee_api.constants;
 //var storage = require("./storage")
 require('dotenv').config()
 
-
 const SERIAL_PORT = process.env.SERIAL_PORT;
 
 var xbeeAPI = new xbee_api.XBeeAPI({
@@ -23,20 +22,33 @@ serialport.pipe(xbeeAPI.parser);
 xbeeAPI.builder.pipe(serialport);
 
 serialport.on("open", function () {
-  var frame_obj = { // AT Request to be sent
-    type: C.FRAME_TYPE.AT_COMMAND,
+  var frame_obj = {
+    type: C.FRAME_TYPE.REMOTE_AT_COMMAND_REQUEST,
+    destination64: "0",
     command: "NI",
     commandParameter: [],
   };
 
   xbeeAPI.builder.write(frame_obj);
 
+  // Allumer la led
   frame_obj = { // AT Request to be sent
     type: C.FRAME_TYPE.REMOTE_AT_COMMAND_REQUEST,
     destination64: "FFFFFFFFFFFFFFFF",
-    command: "NI",
-    commandParameter: [],
+    command: "D1",
+    commandParameter: ["0x05"],
   };
+
+  xbeeAPI.builder.write(frame_obj);
+
+  // Eteindre la led
+  frame_obj = {
+    type: C.FRAME_TYPE.REMOTE_AT_COMMAND_REQUEST,
+      destination64: "FFFFFFFFFFFFFFFF",
+      command: "D0",
+      commandParameter: ["0x05"],
+  };
+
   xbeeAPI.builder.write(frame_obj);
 
 });
@@ -65,16 +77,33 @@ xbeeAPI.parser.on("data", function (frame) {
 
   } else if (C.FRAME_TYPE.ZIGBEE_IO_DATA_SAMPLE_RX === frame.type) {
 
-    console.log("ZIGBEE_IO_DATA_SAMPLE_RX")
-    console.log(frame.analogSamples.AD0)
+    console.log("ZIGBEE_IO_DATA_SAMPLE_RX", frame)
+    if (frame.digitalSamples.DIO1 === 1) {
+      var  frame_obj = {
+        type: C.FRAME_TYPE.REMOTE_AT_COMMAND_REQUEST,
+          destination64: "FFFFFFFFFFFFFFFF",
+          command: "D2",
+          commandParameter: ["0x05"],
+      };
+    
+      xbeeAPI.builder.write(frame_obj);
+    } else if (frame.digitalSamples.DIO1 === 0) {
+      var  frame_obj = {
+        type: C.FRAME_TYPE.REMOTE_AT_COMMAND_REQUEST,
+          destination64: "FFFFFFFFFFFFFFFF",
+          command: "D2",
+          commandParameter: ["0x04"],
+      };
+    
+      xbeeAPI.builder.write(frame_obj);
+    }
+    // console.log(frame.analogSamples.AD0)
     //storage.registerSample(frame.remote64,frame.analogSamples.AD0 )
-
   } else if (C.FRAME_TYPE.REMOTE_COMMAND_RESPONSE === frame.type) {
-    console.log("REMOTE_COMMAND_RESPONSE")
+    console.log("REMOTE_COMMAND_RESPONSE", frame)
   } else {
     console.debug(frame);
     let dataReceived = String.fromCharCode.apply(null, frame.commandData)
     console.log(dataReceived);
   }
-
 });
