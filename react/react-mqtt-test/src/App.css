@@ -40,3 +40,19 @@
 .read-the-docs {
   color: #888;
 }
+
+.button-grid {
+  display: grid;
+  grid-gap: 20px;
+}
+
+.led-color {
+  width: 100px;
+  height: 100px;
+  margin: auto;
+  border-radius: 50%;
+}
+
+.difficulte-selected {
+  border: 2px solid #646cff;
+}

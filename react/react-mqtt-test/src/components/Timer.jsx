@@ -1,35 +1,54 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import Led from './Led';
+import { GameContext } from '../models/GameContext';
+import PropTypes from 'prop-types';
 
 function Timer({ action }) {
     const [seconds, setSeconds] = useState(30);
     const [isActive, setIsActive] = useState(false);
+    const { game, setGame, resetGame } = useContext(GameContext);
 
     useEffect(() => {
         let interval;
         if (isActive && seconds > 0) {
             interval = setInterval(() => {
                 if (seconds === 10 || seconds === 20) {
-                    action("ON,"+currentColor());
+                    actionMessage("ON");
                 }
                 setSeconds(seconds => seconds - 1);
-                if (seconds === 1) {
-                    reset();
-                }
             }, 1000);
-        } else {
-            clearInterval(interval);
+        } else if (seconds === 0) {
+            setIsActive(false);
+            actionMessage("OFF", "WHITE");
+            setGame(prevGame => ({
+                ...prevGame,
+                gameFinished: true
+            }));
         }
         return () => clearInterval(interval);
     }, [isActive, seconds]);
 
     useEffect(() => {
-        if (isActive && action instanceof Function) {
-            action(`ON,${currentColor()}`);
-        } else {
-            action(`PAUSE,${currentColor()}`);
+        if (isActive) {
+            setGame(prevGame => ({
+                ...prevGame,
+                gameLaunched: true
+            }));
+            actionMessage("ON");
+        } else if (!isActive && seconds !== 30) {
+            setGame(prevGame => ({
+                ...prevGame,
+                gameLaunched: false
+            }));
+            actionMessage("BREAK");
         }
     }, [isActive]);
+
+    const actionMessage = (status, color) => {
+        let statusMessage = status ? status : isActive ? "ON" : "OFF";
+        let colorMessage = color ? color : currentColor();
+        return action(statusMessage + "," + colorMessage);
+    }
 
     const currentColor = () => {
         if (!isActive) {
@@ -44,24 +63,37 @@ function Timer({ action }) {
         }
     };
 
-    const toggle = () => {
-        setIsActive(prevIsActive => !prevIsActive);
+    const invertTimerStatus = () => {
+        setIsActive(!isActive);
     };
 
-    const reset = () => {
+    const resetTimer = () => {
         setIsActive(false);
         setSeconds(30);
-        action("OFF,"+currentColor());
+        actionMessage("OFF", "WHITE");
+        if (game) {
+            resetGame();
+        }
     };
 
     return (
         <div>
-            <h1>Timer: {seconds}s</h1>
-            <button onClick={toggle}>{isActive ? 'Pause' : 'Start'}</button>
-            <button onClick={reset}>Reset</button>
-            <Led color={currentColor()} />
+            <h1>Timer</h1>
+            <h1>{seconds}s</h1>
+            <div className='button-grid'>
+                <button onClick={invertTimerStatus}>{isActive ? 'Break' : 'Start'}</button>
+                <button onClick={resetTimer}>Reset</button>
+            </div>
+            <br />
+            <hr />
+            {/* gérer différemment l'affichage de led */}
+            <Led color={currentColor().toString()} />
         </div>
     );
 }
+
+Timer.propTypes = {
+    action: PropTypes.func.isRequired,
+};
 
 export default Timer;
