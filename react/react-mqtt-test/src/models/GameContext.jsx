@@ -10,16 +10,16 @@ const initialGameState = {
     gameLaunched: false,
     gamePaused: false,
     gameFinished: false,
+    secondsLeft: 30,
+    gameStatus: '',
     difficulty: 1,
     photo_res0: 1200,
     photo_res1: 1200,
     photo_res2: 1200,
-    led: { color: 'WHITE', status: 'OFF' },
     pressure: 1200,
+    led: { color: 'WHITE', status: 'OFF' },
     currentTouch: [false, false, false],
-    tresorTaken: false,
-    timeLeft: 0,
-    gameStatus: ''
+    tresorTaken: false
 };
 
 const GameProvider = ({ children }) => {
@@ -31,7 +31,7 @@ const GameProvider = ({ children }) => {
     const resetGame = () => {
         console.log('Resetting game');
         setGame(initialGameState);
-        setShowPopup(false);
+        closePopup();
     }
 
     const gameOngoing = game.gameLaunched && !game.gamePaused && !game.gameFinished;
@@ -40,53 +40,64 @@ const GameProvider = ({ children }) => {
         if (!game.gameLaunched && !game.gamePaused) {
             setGame(prevGame => ({
                 ...prevGame,
-                difficulty: difficulty
+                difficulty
             }));
         }
+    }
+
+    const changeLed = (color, status) => {
+        setGame(prevGame => ({
+            ...prevGame,
+            led: { color, status }
+        }));
     }
 
     const closePopup = () => {
         setShowPopup(false);
     }
 
+    const playAudio = (src, volume = 1) => {
+        if (audio) audio.pause();
+        const newAudio = new Audio(src);
+        newAudio.volume = volume;
+        setAudio(newAudio);
+        newAudio.play();
+    }
+
     useEffect(() => {
         console.log('Game updated currentTouch:', game.currentTouch);
         let touchCount = game.difficulty === 1 ? 3 : game.difficulty === 2 ? 2 : 1;
-        let nbTouch = 0;
-        for (let i = 0; i < game.currentTouch.length; i++) {
-            nbTouch += game.currentTouch[i] ? 1 : 0;
-        }
+        let nbTouch = game.currentTouch.filter(touch => touch).length;
         console.log('nbTouch:', nbTouch);
         console.log('touchCount:', touchCount);
-        if (nbTouch > touchCount || (game.gameFinished && !game.tresorTaken)) {
+
+        if (nbTouch >= touchCount || (game.gameFinished && !game.tresorTaken)) {
             console.log('You lost!');
-            setPopupMessage('Vous avez perdu!');
+            setPopupMessage('Vous avez perdu! 😭');
             setShowPopup(true);
             setGame(prevGame => ({
                 ...prevGame,
                 gameFinished: true,
-                gameStatus: 'lost'
+                gameStatus: 'lost',
+                led: { color: 'RED', status: 'ON' }
             }));
-            const newAudio = new Audio(lostSong);
-            setAudio(newAudio);
-            newAudio.play();
+            playAudio(lostSong);
         } else if (game.gameFinished && game.tresorTaken) {
             console.log('You win!');
-            setPopupMessage('Vous avez gagné!');
+            setPopupMessage('Vous avez gagné! 🏆');
             setShowPopup(true);
             setGame(prevGame => ({
                 ...prevGame,
                 gameFinished: true,
-                gameStatus: 'won'
+                gameStatus: 'won',
+                led: { color: 'GREEN', status: 'ON' }
             }));
-            const newAudio = new Audio(winSong);
-            setAudio(newAudio);
-            newAudio.play();
+            playAudio(winSong);
         }
     }, [game.currentTouch, game.gameFinished]);
 
     return (
-        <GameContext.Provider value={{ game, setGame, resetGame, gameOngoing, changeDiffulty }}>
+        <GameContext.Provider value={{ game, setGame, resetGame, gameOngoing, changeDiffulty, changeLed, playAudio }}>
             {children}
             {showPopup && <Popup message={popupMessage} onClose={closePopup} className={game.gameStatus}/>}
         </GameContext.Provider>

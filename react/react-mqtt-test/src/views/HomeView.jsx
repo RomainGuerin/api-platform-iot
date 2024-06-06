@@ -10,18 +10,19 @@ import hit2 from '../assets/hitRoblox.mp3';
 import hit3 from '../assets/hitGogole.mp3';
 
 const HomeView = () => {
-    const { game, setGame, gameOngoing } = useContext(GameContext);
+    const { game, setGame, gameOngoing, playAudio } = useContext(GameContext);
     const [messages, setMessages] = useState([]);
-    const [audio, setAudio] = useState(null);
 
     const topics = useMemo(() => [
         'topic/esiee/escape/management',
-        // 'topic/esiee/escape/photo_res0',
+        'topic/esiee/escape/photo_res0',
         'topic/esiee/escape/photo_res1',
         'topic/esiee/escape/photo_res2',
         'topic/esiee/escape/led',
         'topic/esiee/escape/pressure',
     ], []);
+
+    const maxSensorValue = [450, 450, 450, 450];
 
     useEffect(() => {
         mqttService.connect();
@@ -38,108 +39,112 @@ const HomeView = () => {
     }, []);
 
     useEffect(() => {
-        let lastMessage = messages.slice().reverse()[0];
-        if (lastMessage) {
-            try {
-                if (topics.includes(lastMessage.topic) && gameOngoing === true) {
-                    console.log('Received message on topic:', lastMessage.topic, lastMessage.message);
-                    switch (lastMessage.topic) {
-                        case 'topic/esiee/escape/photo_res0':
-                            if (game.currentTouch[0] === true) { return };
-                            console.log('Processing photo_res0 message', lastMessage.message.split(',')[1]);
-                            var photo_res0 = parseInt(lastMessage.message.split(',')[1]);
-                            setGame(prevGame => ({
-                                ...prevGame,
-                                photo_res0: photo_res0
-                            }));
-                            if (photo_res0 <= 450) {
-                                setGame(prevGame => ({
-                                    ...prevGame,
-                                    currentTouch: [true, ...prevGame.currentTouch.slice(1)]
-                                }));
-                                const newAudio = new Audio(hit1);
-                                setAudio(newAudio);
-                                newAudio.play();
-                            }
-                            break;
-                        case 'topic/esiee/escape/photo_res1':
-                            if (game.currentTouch[1] === true) { return };
-                            console.log('Processing photo_res1 message');
-                            var photo_res1 = parseInt(lastMessage.message.split(',')[1]);
-                            setGame(prevGame => ({
-                                ...prevGame,
-                                photo_res1: photo_res1
-                            }));
-                            if (photo_res1 <= 450) {
-                                setGame(prevGame => ({
-                                    ...prevGame,
-                                    currentTouch: [...prevGame.currentTouch.slice(0, 1), true, ...prevGame.currentTouch.slice(2)]
-                                }));
-                                const newAudio = new Audio(hit2);
-                                setAudio(newAudio);
-                                newAudio.play();
-                            }
-                            break;
-                        case 'topic/esiee/escape/photo_res2':
-                            if (game.currentTouch[2] === true) { return };
-                            console.log('Processing photo_res2 message');
-                            var photo_res2 = parseInt(lastMessage.message.split(',')[1]);
-                            setGame(prevGame => ({
-                                ...prevGame,
-                                photo_res2: photo_res2
-                            }));
-                            if (photo_res2 <= 450) {
-                                setGame(prevGame => ({
-                                    ...prevGame,
-                                    currentTouch: [...prevGame.currentTouch.slice(0, 2), true, ...prevGame.currentTouch.slice(3)]
-                                }));
-                                const newAudio = new Audio(hit3);
-                                setAudio(newAudio);
-                                newAudio.play();
-                            }
-                            break;
-                        case 'topic/esiee/escape/led':
-                            console.log('Processing led message');
-                            var [status, color] = lastMessage.message.split(',');
-                            setGame(prevGame => ({
-                                ...prevGame,
-                                led: { color, status }
-                            }));
-                            break;
-                        case 'topic/esiee/escape/pressure':
-                            console.log('Processing pressure message', lastMessage.message);
-                            var pressure = parseInt(lastMessage.message.split(',')[1]);
-                            setGame(prevGame => ({
-                                ...prevGame,
-                                pressure: pressure
-                            }));
-                            if (pressure <= 450) {
-                                setGame(prevGame => ({
-                                    ...prevGame,
-                                    tresorTaken: true
-                                }));
-                            }
-                            break;
-                        default:
-                            console.log('Unknown topic:', lastMessage.topic);
-                            break;
-                    }
+        const handlePhotoResMessage = (index, audioFile, message) => {
+            if (game.currentTouch[index]) return;
+            console.log(`Processing photo_res${index} message`, message.split(',')[1]);
+            const photoRes = parseInt(message.split(',')[1]);
+            setGame(prevGame => ({
+                ...prevGame,
+                [`photo_res${index}`]: photoRes
+            }));
+            if (photoRes <= maxSensorValue[index]) {
+                const newTouch = [...game.currentTouch];
+                newTouch[index] = true;
+                setGame(prevGame => ({
+                    ...prevGame,
+                    currentTouch: newTouch
+                }));
+                playAudio(audioFile);
+            }
+        };
+
+        const handlePressureMessage = (message) => {
+            if (game.tresorTaken) return;
+            console.log('Processing pressure message', message);
+            const pressure = parseInt(message.split(',')[1]);
+            setGame(prevGame => ({
+                ...prevGame,
+                pressure
+            }));
+            if (pressure <= maxSensorValue[3]) {
+                setGame(prevGame => ({
+                    ...prevGame,
+                    tresorTaken: true
+                }));
+            }
+        };
+
+        const processMessage = (topic, message) => {
+            console.log('Received message on topic:', topic, message);
+            switch (topic) {
+                case 'topic/esiee/escape/photo_res0':
+                    handlePhotoResMessage(0, hit1, message);
+                    break;
+                case 'topic/esiee/escape/photo_res1':
+                    handlePhotoResMessage(1, hit2, message);
+                    break;
+                case 'topic/esiee/escape/photo_res2':
+                    handlePhotoResMessage(2, hit3, message);
+                    break;
+                case 'topic/esiee/escape/pressure':
+                    handlePressureMessage(message);
+                    break;
+                default:
+                    console.log('No handler for topic:', topic);
+                    break;
+            }
+        };
+        
+        if (messages.length > 0) {
+            const lastMessage = messages[messages.length - 1];
+            if (topics.includes(lastMessage.topic) && gameOngoing === true) {
+                try {
+                    processMessage(lastMessage.topic, lastMessage.message);
+                } catch (e) {
+                    console.error('Error parsing message:', e);
                 }
-            } catch (e) {
-                console.error('Error parsing message:', e);
             }
         }
     }, [messages]);
 
+    useEffect(() => {
+        if (game.gameFinished) {
+            handleLedStatusFinal();
+        }
+    }, [game.led]);
+
+    const handleLedStatusFinal = () => {
+        const topic = 'topic/esiee/escape/led';
+        mqttService.publish(topic, game.led.status + ',' + game.led.color);
+    };
+
+    const handleLedStatus = (status, color) => {
+        const topic = 'topic/esiee/escape/led';
+        mqttService.publish(topic, status + ',' + color);
+    };
+
     const handlePublishTEST = () => {
-        const topic = 'topic/esiee/escape/pressure';
+        const topic = 'topic/esiee/escape/photo_res0';
         const message = 'tests,200';
         mqttService.publish(topic, message);
     };
 
-    const handleTimerStart = (messageToSend) => {
-        const topic = 'topic/esiee/escape/led';
-        mqttService.publish(topic, messageToSend);
+    const handlePublishTEST2 = () => {
+        const topic = 'topic/esiee/escape/photo_res1';
+        const message = 'tests,200';
+        mqttService.publish(topic, message);
+    };
+
+    const handlePublishTEST3 = () => {
+        const topic = 'topic/esiee/escape/photo_res2';
+        const message = 'tests,200';
+        mqttService.publish(topic, message);
+    };
+
+    const handlePublishTESTpressure = () => {
+        const topic = 'topic/esiee/escape/pressure';
+        const message = 'tests,20';
+        mqttService.publish(topic, message);
     };
 
     const resetMessages = () => {
@@ -152,17 +157,20 @@ const HomeView = () => {
 
     return (
         <div>
-            <h1>Laser Lokcdown</h1>
+            <h1>Laser Lockdown</h1>
             <h2>Le casse ultime</h2>
             <Difficulty />
             <br />
             <hr />
-            <Timer action={handleTimerStart} />
+            <Timer action={handleLedStatus} />
             {/* temporaire */}
             <br />
             <hr />
             <br />
             <Button onClick={handlePublishTEST}>Publish Message</Button>
+            <Button onClick={handlePublishTEST2}>Publish Message</Button>
+            <Button onClick={handlePublishTEST3}>Publish Message</Button>
+            <Button onClick={handlePublishTESTpressure}>Publish Message</Button>
             <div>
                 <h2>Received Messages</h2>
                 <ul>

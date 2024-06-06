@@ -10,6 +10,7 @@ const StatView = () => {
             <p>Game launched: {game.gameLaunched ? 'Yes' : 'No'}</p>
             <p>Game paused: {game.gamePaused ? 'Yes' : 'No'}</p>
             <p>Game finished: {game.gameFinished ? 'Yes' : 'No'}</p>
+            <p>Seconds: {game.secondsLeft}</p>
             <p>Difficulty: {game.difficulty}</p>
             <p>Photo resolution 0: {game.photo_res0}</p>
             <p>Photo resolution 1: {game.photo_res1}</p>

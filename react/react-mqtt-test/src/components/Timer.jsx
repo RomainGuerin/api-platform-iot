@@ -5,35 +5,13 @@ import PropTypes from 'prop-types';
 import gameMusic from '../assets/gameMusic.mp3';
 
 function Timer({ action }) {
-    const [seconds, setSeconds] = useState(5);
     const [isActive, setIsActive] = useState(false);
     const { game, setGame, resetGame } = useContext(GameContext);
     const [audio, setAudio] = useState(null);
 
     useEffect(() => {
-        let interval;
-        if (isActive && seconds > 0 && !game.gameFinished) {
-            interval = setInterval(() => {
-                if (seconds === 10 || seconds === 20) {
-                    actionMessage("ON");
-                }
-                setSeconds(seconds => seconds - 1);
-            }, 1000);
-        } else if (seconds === 0) {
-            setIsActive(false);
-            actionMessage("OFF", "WHITE");
-            setGame(prevGame => ({
-                ...prevGame,
-                gameFinished: true,
-                gamePaused: false
-            }));
-            if (audio) {
-                audio.pause();
-                setAudio(null);
-            }
-        }
-        return () => clearInterval(interval);
-    }, [isActive, seconds]);
+        resetAudio();
+    }, [game.gameFinished]);
 
     useEffect(() => {
         if (isActive) {
@@ -51,71 +29,92 @@ function Timer({ action }) {
             } else if (audio.paused) {
                 audio.play();
             }
-        } else if (!isActive && seconds !== 30) {
+        } else if (!isActive && game.gameLaunched) {
             setGame(prevGame => ({
                 ...prevGame,
                 gamePaused: true
             }));
-            actionMessage("ON");
+            actionMessage("ON", "WHITE");
             if (audio) {
                 audio.pause();
             }
         }
     }, [isActive]);
 
+    useEffect(() => {
+        let interval;
+        if (isActive && game.secondsLeft > 0 && !game.gameFinished) {
+            interval = setInterval(() => {
+                if (game.secondsLeft === 10 || game.secondsLeft === 20) {
+                    actionMessage("ON");
+                }
+                setGame(prevGame => ({
+                    ...prevGame,
+                    secondsLeft: prevGame.secondsLeft - 1
+                }));
+            }, 1000);
+        } else if (game.secondsLeft === 0) {
+            setIsActive(false);
+            setGame(prevGame => ({
+                ...prevGame,
+                gameFinished: true,
+                gamePaused: false
+            }));
+            resetAudio();
+        }
+        return () => clearInterval(interval);
+    }, [isActive, game.secondsLeft]);
+
     const actionMessage = (status, color) => {
         let statusMessage = status ? status : isActive ? "ON" : "OFF";
         let colorMessage = color ? color : currentColor();
-        return action(statusMessage + "," + colorMessage);
+        setGame(prevGame => ({
+            ...prevGame,
+            led: { color: colorMessage, status: statusMessage }
+        }));
+        action(statusMessage, colorMessage);
     }
 
     const currentColor = () => {
-        if (!isActive && !game.gameFinished) {
-            return "WHITE";
-        }
-        console.log(!isActive, game.gameFinished, game.gameStatus, game.gameStatus == 'won');
-        if (!isActive && game.gameFinished && game.gameStatus == 'won') {
-            return "GREEN";
-        }
-        if (!isActive && game.gameFinished && game.gameStatus == 'lost') {
+        if (game.secondsLeft <= 10) {
             return "RED";
-        }
-        if (seconds <= 10) {
-            return "RED";
-        } else if (seconds <= 20) {
+        } else if (game.secondsLeft <= 20) {
             return "BLUE";
         } else {
             return "GREEN";
         }
     };
 
-    const invertTimerStatus = () => {
+    const updateGameStatus = () => {
         setIsActive(!isActive);
     };
 
     const resetTimer = () => {
         setIsActive(false);
-        setSeconds(30);
         actionMessage("OFF", "WHITE");
         if (game) {
             resetGame();
         }
+        resetAudio();
+    };
+
+    const resetAudio = () => {
         if (audio) {
             audio.pause();
             setAudio(null);
         }
-    };
+    }
 
     return (
         <div>
             <h1>Temps restant</h1>
-            <h1 className={seconds <= 10 ? 'color-red' : ''}>{seconds}s</h1>
+            <h1 className={game.secondsLeft <= 10 ? 'color-red' : ''}>{game.secondsLeft}s</h1>
             <div className='button-grid'>
-                <button onClick={invertTimerStatus}>{isActive ? 'Pause' : 'Lancer'}</button>
+                {!game.gameFinished ? <button onClick={updateGameStatus}>{isActive ? 'Pause' : 'Lancer'}</button> : null}
                 <button onClick={resetTimer}>Réinitialiser</button>
             </div>
             <br />
-            <Led color={currentColor().toString()} />
+            <Led color={game.led.color} />
         </div>
     );
 }

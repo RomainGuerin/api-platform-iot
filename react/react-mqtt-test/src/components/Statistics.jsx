@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import { useContext } from 'react';
 import { GameContext } from '../models/GameContext';
 
 const Statistics = () => {
@@ -11,6 +11,10 @@ const Statistics = () => {
                 <div className="stat-item">
                     <span className="stat-title">Partie terminé:</span>
                     <span className="stat-value">{game.gameFinished ? 'Oui' : 'Non'}</span>
+                </div>
+                <div className="stat-item">
+                    <span className="stat-title">Temps:</span>
+                    <span className="stat-value">En {30 - game.secondsLeft} secondes</span>
                 </div>
                 <div className="stat-item">
                     <span className="stat-title">Difficulté:</span>
