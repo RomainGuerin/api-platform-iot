@@ -3,15 +3,20 @@ import { GameContext } from '../models/GameContext';
 import mqttService from '../controllers/mqttService';
 import Button from '../components/Button';
 import Timer from '../components/Timer';
+import Difficulty from '../components/Difficulty';
 import StatView from './StatView';
+import hit1 from '../assets/hitMinecraft.mp3';
+import hit2 from '../assets/hitRoblox.mp3';
+import hit3 from '../assets/hitGogole.mp3';
 
 const HomeView = () => {
-    const { game, setGame } = useContext(GameContext);
+    const { game, setGame, gameOngoing } = useContext(GameContext);
     const [messages, setMessages] = useState([]);
+    const [audio, setAudio] = useState(null);
 
     const topics = useMemo(() => [
         'topic/esiee/escape/management',
-        'topic/esiee/escape/photo_res0',
+        // 'topic/esiee/escape/photo_res0',
         'topic/esiee/escape/photo_res1',
         'topic/esiee/escape/photo_res2',
         'topic/esiee/escape/led',
@@ -36,12 +41,13 @@ const HomeView = () => {
         let lastMessage = messages.slice().reverse()[0];
         if (lastMessage) {
             try {
-                if (topics.includes(lastMessage.topic)) {
+                if (topics.includes(lastMessage.topic) && gameOngoing === true) {
                     console.log('Received message on topic:', lastMessage.topic, lastMessage.message);
                     switch (lastMessage.topic) {
                         case 'topic/esiee/escape/photo_res0':
-                            console.log('Processing photo_res0 message');
-                            var photo_res0 = parseInt(lastMessage.message.split(',')[0], 10);
+                            if (game.currentTouch[0] === true) { return };
+                            console.log('Processing photo_res0 message', lastMessage.message.split(',')[1]);
+                            var photo_res0 = parseInt(lastMessage.message.split(',')[1]);
                             setGame(prevGame => ({
                                 ...prevGame,
                                 photo_res0: photo_res0
@@ -51,11 +57,15 @@ const HomeView = () => {
                                     ...prevGame,
                                     currentTouch: [true, ...prevGame.currentTouch.slice(1)]
                                 }));
+                                const newAudio = new Audio(hit1);
+                                setAudio(newAudio);
+                                newAudio.play();
                             }
                             break;
                         case 'topic/esiee/escape/photo_res1':
+                            if (game.currentTouch[1] === true) { return };
                             console.log('Processing photo_res1 message');
-                            var photo_res1 = parseInt(lastMessage.message.split(',')[0], 10);
+                            var photo_res1 = parseInt(lastMessage.message.split(',')[1]);
                             setGame(prevGame => ({
                                 ...prevGame,
                                 photo_res1: photo_res1
@@ -65,11 +75,15 @@ const HomeView = () => {
                                     ...prevGame,
                                     currentTouch: [...prevGame.currentTouch.slice(0, 1), true, ...prevGame.currentTouch.slice(2)]
                                 }));
+                                const newAudio = new Audio(hit2);
+                                setAudio(newAudio);
+                                newAudio.play();
                             }
                             break;
                         case 'topic/esiee/escape/photo_res2':
+                            if (game.currentTouch[2] === true) { return };
                             console.log('Processing photo_res2 message');
-                            var photo_res2 = parseInt(lastMessage.message.split(',')[0], 10);
+                            var photo_res2 = parseInt(lastMessage.message.split(',')[1]);
                             setGame(prevGame => ({
                                 ...prevGame,
                                 photo_res2: photo_res2
@@ -79,6 +93,9 @@ const HomeView = () => {
                                     ...prevGame,
                                     currentTouch: [...prevGame.currentTouch.slice(0, 2), true, ...prevGame.currentTouch.slice(3)]
                                 }));
+                                const newAudio = new Audio(hit3);
+                                setAudio(newAudio);
+                                newAudio.play();
                             }
                             break;
                         case 'topic/esiee/escape/led':
@@ -90,8 +107,8 @@ const HomeView = () => {
                             }));
                             break;
                         case 'topic/esiee/escape/pressure':
-                            console.log('Processing pressure message');
-                            var pressure = parseInt(lastMessage.message, 10);
+                            console.log('Processing pressure message', lastMessage.message);
+                            var pressure = parseInt(lastMessage.message.split(',')[1]);
                             setGame(prevGame => ({
                                 ...prevGame,
                                 pressure: pressure
@@ -99,7 +116,7 @@ const HomeView = () => {
                             if (pressure <= 450) {
                                 setGame(prevGame => ({
                                     ...prevGame,
-                                    currentTouch: [...prevGame.currentTouch.slice(0, 3), true]
+                                    tresorTaken: true
                                 }));
                             }
                             break;
@@ -114,16 +131,9 @@ const HomeView = () => {
         }
     }, [messages]);
 
-    const changeDiffulty = (difficulty) => {
-        setGame(prevGame => ({
-            ...prevGame,
-            difficulty
-        }));
-    };
-
     const handlePublishTEST = () => {
-        const topic = 'topic/esiee/escape/photo_res1';
-        const message = '200';
+        const topic = 'topic/esiee/escape/pressure';
+        const message = 'tests,200';
         mqttService.publish(topic, message);
     };
 
@@ -136,34 +146,22 @@ const HomeView = () => {
         setMessages([]);
     };
 
-    const selectedDifficulty = (difficulty, gameDifficulty) => {
-        if (difficulty === gameDifficulty) {
-            return 'difficulte-selected';
-        } else {
-            return 'difficulte-not-selected';
-        }
-    }
-
     const consoleGame = () => {
         console.log(game);
     }
 
     return (
         <div>
-            <h1>Home</h1>
-            {/* nouvelle view pour difficulty + bloquer une fois start */}
-            <div className='button-grid'>
-                <Button onClick={() => changeDiffulty(1)} className={selectedDifficulty(1, game.difficulty)}>Difficulté 1</Button>
-                <Button onClick={() => changeDiffulty(2)} className={selectedDifficulty(2, game.difficulty)}>Difficulté 2</Button>
-                <Button onClick={() => changeDiffulty(3)} className={selectedDifficulty(3, game.difficulty)}>Difficulté 3</Button>
-            </div>
+            <h1>Laser Lokcdown</h1>
+            <h2>Le casse ultime</h2>
+            <Difficulty />
             <br />
             <hr />
             <Timer action={handleTimerStart} />
+            {/* temporaire */}
             <br />
             <hr />
             <br />
-            {/* temporaire */}
             <Button onClick={handlePublishTEST}>Publish Message</Button>
             <div>
                 <h2>Received Messages</h2>

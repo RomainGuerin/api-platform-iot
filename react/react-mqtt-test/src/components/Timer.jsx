@@ -2,15 +2,17 @@ import { useState, useEffect, useContext } from 'react';
 import Led from './Led';
 import { GameContext } from '../models/GameContext';
 import PropTypes from 'prop-types';
+import gameMusic from '../assets/gameMusic.mp3';
 
 function Timer({ action }) {
-    const [seconds, setSeconds] = useState(30);
+    const [seconds, setSeconds] = useState(5);
     const [isActive, setIsActive] = useState(false);
     const { game, setGame, resetGame } = useContext(GameContext);
+    const [audio, setAudio] = useState(null);
 
     useEffect(() => {
         let interval;
-        if (isActive && seconds > 0) {
+        if (isActive && seconds > 0 && !game.gameFinished) {
             interval = setInterval(() => {
                 if (seconds === 10 || seconds === 20) {
                     actionMessage("ON");
@@ -22,8 +24,13 @@ function Timer({ action }) {
             actionMessage("OFF", "WHITE");
             setGame(prevGame => ({
                 ...prevGame,
-                gameFinished: true
+                gameFinished: true,
+                gamePaused: false
             }));
+            if (audio) {
+                audio.pause();
+                setAudio(null);
+            }
         }
         return () => clearInterval(interval);
     }, [isActive, seconds]);
@@ -32,15 +39,27 @@ function Timer({ action }) {
         if (isActive) {
             setGame(prevGame => ({
                 ...prevGame,
-                gameLaunched: true
+                gameLaunched: true,
+                gamePaused: false
             }));
             actionMessage("ON");
+            if (!audio) {
+                const newAudio = new Audio(gameMusic);
+                newAudio.volume = 0.5;
+                setAudio(newAudio);
+                newAudio.play();
+            } else if (audio.paused) {
+                audio.play();
+            }
         } else if (!isActive && seconds !== 30) {
             setGame(prevGame => ({
                 ...prevGame,
-                gameLaunched: false
+                gamePaused: true
             }));
-            actionMessage("BREAK");
+            actionMessage("ON");
+            if (audio) {
+                audio.pause();
+            }
         }
     }, [isActive]);
 
@@ -51,8 +70,15 @@ function Timer({ action }) {
     }
 
     const currentColor = () => {
-        if (!isActive) {
+        if (!isActive && !game.gameFinished) {
             return "WHITE";
+        }
+        console.log(!isActive, game.gameFinished, game.gameStatus, game.gameStatus == 'won');
+        if (!isActive && game.gameFinished && game.gameStatus == 'won') {
+            return "GREEN";
+        }
+        if (!isActive && game.gameFinished && game.gameStatus == 'lost') {
+            return "RED";
         }
         if (seconds <= 10) {
             return "RED";
@@ -74,19 +100,21 @@ function Timer({ action }) {
         if (game) {
             resetGame();
         }
+        if (audio) {
+            audio.pause();
+            setAudio(null);
+        }
     };
 
     return (
         <div>
-            <h1>Timer</h1>
-            <h1>{seconds}s</h1>
+            <h1>Temps restant</h1>
+            <h1 className={seconds <= 10 ? 'color-red' : ''}>{seconds}s</h1>
             <div className='button-grid'>
-                <button onClick={invertTimerStatus}>{isActive ? 'Break' : 'Start'}</button>
-                <button onClick={resetTimer}>Reset</button>
+                <button onClick={invertTimerStatus}>{isActive ? 'Pause' : 'Lancer'}</button>
+                <button onClick={resetTimer}>Réinitialiser</button>
             </div>
             <br />
-            <hr />
-            {/* gérer différemment l'affichage de led */}
             <Led color={currentColor().toString()} />
         </div>
     );

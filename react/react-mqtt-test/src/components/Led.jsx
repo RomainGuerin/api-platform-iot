@@ -10,9 +10,8 @@ function Led({ color }) {
 
     return (
         <div>
-            <h1>LED</h1>
             <div className='led-color' style={{ backgroundColor: currentColor }}></div>
-            <p>Current color: {currentColor}</p>
+            <small><i>{currentColor}</i></small>
         </div>
     );
 }
