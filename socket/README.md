@@ -1,30 +1,20 @@
-This sample code give the base for Zigbee communication experimentations
-
 # Getting Started
+Configure 5 Xbee, 1 in Coordinator, 4 in Rooter
+Nodes Identification : 
+    'Laser 1'
+    'Laser 2'
+    'Laser 3'
+    'Plaque Pression'
+Light Sensor plug on D0 on Laser 1,2,3
 
-* Copy .env.dist to .env file and edit with local parameters
+Pressure plate on D0
+Led plug on D1, 2, 3 on Plaque Pression
 
-* Configure a coordinator and router/enddevice with XCTU ([Download XCTU](https://www.digi.com/products/embedded-systems/digi-xbee/digi-xbee-tools/xctu#productsupport-utilities))
+Install packages :
+   npm i
 
-* Ensure your user is member of the `dialout` group on Linux (use the `id` command) and add user to group if not already done
-
-    $sudo usermod -a -G dialout yourUserName
-
-* Connect the coordinator to your computer and launch server.js with `yarn start`
-
-# Configure Firebase
-* https://firebase.google.com/docs/firestore/quickstart
-* Create a file `serviceAccountKey.json` at the root folder
-
-#### Disclaimer !
-Il est impossible pour le container docker possédant node.js d'accéder aux ports COM.
-Pour résoudre ce probleme :
-1) Installez  node.js sur votre machine (si ce n'est pas déjà fait).
-   liens : https://nodejs.org/en/
-2) Ouvrez un terminal (Powershell ou CMD) en mode administateur.
-3) Accédez à votre dossier.
-4) lancez les commandes suivantes :
-   ```
-   npm install
+Start project :
    npm start
 
+Entry file :
+   server.js

@@ -14,7 +14,7 @@ client.on('connect', () => {
     client.subscribe(Topics.LED);
 });
 
-function mqtt_send_data(topic, data) {
+function mqttSendData(topic, data) {
     if (typeof data === 'string' && data !== null) {
         try {
             client.publish(topic, data);
@@ -26,15 +26,15 @@ function mqtt_send_data(topic, data) {
     }
 }
 
-function led_setup_callback(callback_led) {
+function ledSetupCallback(callback_led) {
     client.on('message', (topic, message) => {
         let messageArray = message.toString().split(",");
-        if(messageArray[0] === "ON") {
+        if(messageArray[0] === Configs.STATE_ON) {
             console.log("On allume la led en", messageArray[1]);
         } else if (messageArray[0] === "OFF") {
             console.log("On eteint la led");
         } else { 
-            console.log(`message: ${message.toString()}, topic: ${topic}`); 
+            console.log(`Message: ${message.toString()}, Topic: ${topic}`); 
         }
         callback_led(messageArray[0], messageArray[1]);
     });
@@ -46,6 +46,6 @@ client.on('error', (error) => {
 });
 
 module.exports = {
-    mqtt_send_data,
-    led_setup_callback
+    mqttSendData,
+    ledSetupCallback
 };

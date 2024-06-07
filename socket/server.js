@@ -1,170 +1,83 @@
 const SerialPort = require('serialport');
 const xbee_api = require('xbee-api');
-const C = xbee_api.constants;
-const mqtt_controller = require('./mqtt_controller');
+const mqttController = require('./mqtt_controller');
 const Topics = require('./topics');
-const { auth } = require('firebase-admin');
+const Configs = require('./configs');
 require('dotenv').config();
 
-const SERIAL_PORT = process.env.SERIAL_PORT;
+const { FRAME_TYPE } = xbee_api.constants;
+const { discoverXbeeNodes, handleIncomingData } = require('./xbee_controller');
 
 let authorizedXbees = {};
+const SERIAL_PORT = process.env.SERIAL_PORT;
+const BAUD_RATE = parseInt(process.env.SERIAL_BAUDRATE) || 9600;
 
-const xbeeAPI = new xbee_api.XBeeAPI({
-  api_mode: 2
-});
-
-let serialport = new SerialPort(SERIAL_PORT, {
-  baudRate: parseInt(process.env.SERIAL_BAUDRATE) || 9600,
-}, function (err) {
-  if (err) {
-    return console.log('Error: ', err.message);
-  }
-});
+const xbeeAPI = new xbee_api.XBeeAPI({ api_mode: 2 });
+let serialport = new SerialPort(SERIAL_PORT, { baudRate: BAUD_RATE }, handleSerialPortError);
 
 serialport.pipe(xbeeAPI.parser);
+serialport.on('open', startXbeeDiscovery);
+
 xbeeAPI.builder.pipe(serialport);
+xbeeAPI.parser.on('data', frame => handleIncomingData(frame, authorizedXbees, mqttController));
 
-serialport.on("open", function () {
-  discoverXbees();
-  setInterval(discoverXbees, 10000);
-  });
+mqttController.ledSetupCallback(setLedColor);
 
-mqtt_controller.led_setup_callback(set_led_color);
-
-function set_led_color(state, color) {
-  off_all_leds();
-  console.log("state", state, "color", color)
-  if(state === "OFF") {
-    return;
+function handleSerialPortError(err) {
+  if (err) {
+    console.error('Error with Serial Port: ', err.message);
   }
-  if(color === "BLUE") {
-    set_led(3, 0x04);
-  } else if (color === "GREEN") {
-    set_led(2, 0x04);
-  } else if (color === "RED") {
-    set_led(1, 0x04);
-  } else if (color === "WHITE") {
-    set_led(3, 0x04);
-    set_led(2, 0x04);
-    set_led(1, 0x04);
+}
+
+function startXbeeDiscovery() {
+  discoverXbeeNodes(xbeeAPI);
+  setInterval(() => manageXbeeDiscovery(xbeeAPI, authorizedXbees), Configs.DELAY_DISCOVER);
+}
+
+function manageXbeeDiscovery(xbeeAPI, authorizedXbees) {
+    if(Object.keys(authorizedXbees).length != 4) {
+        console.log("We search our XBee, We've register :", Object.keys(authorizedXbees).length, "nodes");
+        discoverXbeeNodes(xbeeAPI);
+    }
+}
+
+function setLedColor(state, color) {
+  turnOffAllLeds();
+  if (state === Configs.STATE_OFF) return;
+  setColorLed(color);
+}
+
+function setColorLed(color) {
+  if (color in Configs.LED_MAPPING) {
+    const ports = Array.isArray(Configs.LED_MAPPING[color]) ? Configs.LED_MAPPING[color] : [Configs.LED_MAPPING[color]];
+    ports.forEach(port => setLed(port, LED_ON));
   } else {
-    console.warn("Unknown color ", color);
+    console.warn('Unknown color ', color);
   }
 }
 
-function off_all_leds() {
-  // 1, 2, 3
-  set_led(1, 0x05); // RED
-  set_led(2, 0x05); // GREEN
-  set_led(3, 0x05); // BLUE
+function turnOffAllLeds() {
+  Configs.LED_MAPPING.WHITE.forEach(port => setLed(port, LED_OFF));
 }
 
-
-function set_led(port, state) {
-  // Create API frame for remote AT command
-  destination = getKeyByValue(authorizedXbees, Topics.PRESSURE);
-  // console.log("destination:", destination, authorizedXbees);
-  if(destination) {
-    let commande = "D" + port;
-    // console.log("Set", destination, "led", port, "to", state);
-    const apiFrame = {
-      type: C.FRAME_TYPE.REMOTE_AT_COMMAND_REQUEST,
-      destination64: destination, // Replace with 64-bit address of XBee module that controls LED
-      command: commande, // DIO configuration command
-      commandParameter: [state] // e.g. [0x04] for low, [0x05] for high
-    };
-    xbeeAPI.builder.write(apiFrame);
-    // console.log("APIFrame", apiFrame);
-
-    // Send API frame to XBee
-    // xbee.send(apiFrame, function(err, data) {
-    //   if (err) {
-    //     console.error(err);
-    //   } else {
-    //     console.log("LED state updated: " + state);
-    //   }
-    // });
+function setLed(port, state) {
+  const destination = findXbeeDestination(Topics.PRESSURE);
+  if (destination) {
+    const command = `D${port}`;
+    sendXbeeCommand(destination, command, [state]);
   }
 }
 
-function discoverXbees() {
-  let frame_obj = {
-    type: C.FRAME_TYPE.AT_COMMAND,
-    command: "ND",
-    commandParameter: []
+function findXbeeDestination(topic) {
+  return Object.keys(authorizedXbees).find(key => authorizedXbees[key] === topic);
+}
+
+function sendXbeeCommand(destination, command, parameters) {
+  const apiFrame = {
+    type: FRAME_TYPE.REMOTE_AT_COMMAND_REQUEST,
+    destination64: destination,
+    command: command,
+    commandParameter: parameters
   };
-
-  xbeeAPI.builder.write(frame_obj);
+  xbeeAPI.builder.write(apiFrame);
 }
-
-function isAllowedXbee(remote64) {
-  return authorizedXbees.hasOwnProperty(remote64);
-}
-
-function getKeyByValue(object, value) {
-    return Object.keys(object).find(key => object[key] === value);
-
-}
-
-xbeeAPI.parser.on("data", function (frame) {
-  if (C.FRAME_TYPE.ZIGBEE_RECEIVE_PACKET === frame.type) {
-    console.log("C.FRAME_TYPE.ZIGBEE_RECEIVE_PACKET");
-    let dataReceived = String.fromCharCode.apply(null, frame.data);
-    console.log(">> ZIGBEE_RECEIVE_PACKET >", dataReceived);
-
-  } else if (C.FRAME_TYPE.NODE_IDENTIFICATION === frame.type) {
-    
-  } else if (C.FRAME_TYPE.AT_COMMAND_RESPONSE === frame.type && frame.command === "ND") {
-    // console.log("AT_COMMAND_RESPONSE", frame);
-    if(frame.command === "ND"){
-      // console.log("AT_COMMAND_RESPONSE - ND", frame);
-      if (frame.nodeIdentification) {
-        const remote64 = frame.nodeIdentification.remote64.toString('hex');
-        const nodeIdentifier = frame.nodeIdentification.nodeIdentifier;
-        if(!isAllowedXbee(remote64)) {
-          console.log("nodeIdentification = ", nodeIdentifier);
-          topic = "";
-          switch(nodeIdentifier) {
-            case "Laser 1":
-              topic = Topics.PHOTO_RES1;
-              break;
-            case "Laser 2":
-              topic = Topics.PHOTO_RES0;
-              break;
-            case "Laser 3":
-              topic = Topics.PHOTO_RES2;
-              break;
-            case "Plaque Pression":
-              topic = Topics.PRESSURE;
-              break;
-            default:
-              topic = "";
-              break;
-          }
-          if(topic != "") {
-            authorizedXbees[remote64] = topic;
-            console.log(`XBee Discovered: ${remote64} - ${nodeIdentifier}`);
-          }
-        }
-      }
-    }
-  } else if (C.FRAME_TYPE.ZIGBEE_IO_DATA_SAMPLE_RX === frame.type) {
-    if (isAllowedXbee(frame.remote64)) {
-      // console.log("ZIGBEE_IO_DATA_SAMPLE_RX", frame);
-      let data_to_send = `${frame.remote64},${frame.analogSamples.AD0}`;
-      console.log(authorizedXbees[frame.remote64], frame.analogSamples.AD0)
-      mqtt_controller.mqtt_send_data(authorizedXbees[frame.remote64], data_to_send);
-    } else {
-      // console.warn(`Unauthorized XBee: ${frame.remote64}`);
-    }
-  } else if (C.FRAME_TYPE.REMOTE_COMMAND_RESPONSE === frame.type) {
-    // console.log("REMOTE_COMMAND_RESPONSE", frame);
-  } else {
-    console.debug(frame);
-    if (frame.commandData) {
-      let dataReceived = String.fromCharCode.apply(null, frame.commandData);
-      console.log(dataReceived);
-    }
-  }
-});
