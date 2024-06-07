@@ -1,10 +1,8 @@
 import { useEffect, useState, useMemo, useContext } from 'react';
 import { GameContext } from '../models/GameContext';
 import mqttService from '../controllers/mqttService';
-import Button from '../components/Button';
 import Timer from '../components/Timer';
 import Difficulty from '../components/Difficulty';
-import StatView from './StatView';
 import hit1 from '../assets/hitMinecraft.mp3';
 import hit2 from '../assets/hitRoblox.mp3';
 import hit3 from '../assets/hitGogole.mp3';
@@ -122,38 +120,6 @@ const HomeView = () => {
         mqttService.publish(topic, status + ',' + color);
     };
 
-    const handlePublishTEST = () => {
-        const topic = 'topic/esiee/escape/photo_res0';
-        const message = 'tests,200';
-        mqttService.publish(topic, message);
-    };
-
-    const handlePublishTEST2 = () => {
-        const topic = 'topic/esiee/escape/photo_res1';
-        const message = 'tests,200';
-        mqttService.publish(topic, message);
-    };
-
-    const handlePublishTEST3 = () => {
-        const topic = 'topic/esiee/escape/photo_res2';
-        const message = 'tests,200';
-        mqttService.publish(topic, message);
-    };
-
-    const handlePublishTESTpressure = () => {
-        const topic = 'topic/esiee/escape/pressure';
-        const message = 'tests,20';
-        mqttService.publish(topic, message);
-    };
-
-    const resetMessages = () => {
-        setMessages([]);
-    };
-
-    const consoleGame = () => {
-        console.log(game);
-    }
-
     return (
         <div>
             <h1>Laser Lockdown</h1>
@@ -162,28 +128,6 @@ const HomeView = () => {
             <br />
             <hr />
             <Timer action={handleLedStatus} />
-            {/* temporaire */}
-            {/* <br />
-            <hr />
-            <br />
-            <Button onClick={handlePublishTEST}>Publish Message</Button>
-            <Button onClick={handlePublishTEST2}>Publish Message</Button>
-            <Button onClick={handlePublishTEST3}>Publish Message</Button>
-            <Button onClick={handlePublishTESTpressure}>Publish Message</Button>
-            <div>
-                <h2>Received Messages</h2>
-                <ul>
-                    {messages.map((msg, index) => (
-                        <li key={index}><strong>{msg.topic}:</strong> {msg.message}</li>
-                    ))}
-                </ul>
-            </div>
-            <Button onClick={resetMessages}>Clear Messages</Button>
-            <Button onClick={consoleGame}>consoleGame</Button>
-            <br />
-            <br />
-            <hr />
-            <StatView /> */}
         </div>
     );
 };
