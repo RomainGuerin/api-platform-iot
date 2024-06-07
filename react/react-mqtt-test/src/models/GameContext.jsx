@@ -67,7 +67,10 @@ const GameProvider = ({ children }) => {
     useEffect(() => {
         console.log('Game updated currentTouch:', game.currentTouch);
         let touchCount = game.difficulty === 1 ? 3 : game.difficulty === 2 ? 2 : 1;
-        let nbTouch = game.currentTouch.filter(touch => touch).length;
+        let nbTouch = 0;
+        for (let i = 0; i < game.currentTouch.length; i++) {
+            nbTouch += game.currentTouch[i] ? 1 : 0;
+        }
         console.log('nbTouch:', nbTouch);
         console.log('touchCount:', touchCount);
 

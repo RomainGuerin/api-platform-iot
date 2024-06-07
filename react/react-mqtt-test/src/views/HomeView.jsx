@@ -14,7 +14,6 @@ const HomeView = () => {
     const [messages, setMessages] = useState([]);
 
     const topics = useMemo(() => [
-        'topic/esiee/escape/management',
         'topic/esiee/escape/photo_res0',
         'topic/esiee/escape/photo_res1',
         'topic/esiee/escape/photo_res2',
@@ -22,7 +21,7 @@ const HomeView = () => {
         'topic/esiee/escape/pressure',
     ], []);
 
-    const maxSensorValue = [450, 450, 450, 450];
+    const maxSensorValue = [20, 50, 50, 450];
 
     useEffect(() => {
         mqttService.connect();
@@ -164,7 +163,7 @@ const HomeView = () => {
             <hr />
             <Timer action={handleLedStatus} />
             {/* temporaire */}
-            <br />
+            {/* <br />
             <hr />
             <br />
             <Button onClick={handlePublishTEST}>Publish Message</Button>
@@ -184,7 +183,7 @@ const HomeView = () => {
             <br />
             <br />
             <hr />
-            <StatView />
+            <StatView /> */}
         </div>
     );
 };

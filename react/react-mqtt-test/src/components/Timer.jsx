@@ -45,9 +45,10 @@ function Timer({ action }) {
         let interval;
         if (isActive && game.secondsLeft > 0 && !game.gameFinished) {
             interval = setInterval(() => {
-                if (game.secondsLeft === 10 || game.secondsLeft === 20) {
-                    actionMessage("ON");
-                }
+                // if (game.secondsLeft === 10 || game.secondsLeft === 20) {
+                //     actionMessage("ON");
+                // }
+                actionMessage("ON");
                 setGame(prevGame => ({
                     ...prevGame,
                     secondsLeft: prevGame.secondsLeft - 1
@@ -67,6 +68,9 @@ function Timer({ action }) {
 
     const actionMessage = (status, color) => {
         let statusMessage = status ? status : isActive ? "ON" : "OFF";
+        if (game.secondsLeft % 2) {
+            statusMessage = "OFF";
+        }
         let colorMessage = color ? color : currentColor();
         setGame(prevGame => ({
             ...prevGame,
@@ -114,7 +118,7 @@ function Timer({ action }) {
                 <button onClick={resetTimer}>Réinitialiser</button>
             </div>
             <br />
-            <Led color={game.led.color} />
+            <Led color={game.led.color} status={game.led.status} />
         </div>
     );
 }

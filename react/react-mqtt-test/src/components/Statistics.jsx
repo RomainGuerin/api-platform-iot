@@ -22,15 +22,15 @@ const Statistics = () => {
                 </div>
                 <div className="stat-item">
                     <span className="stat-title">Laser 1 touché:</span>
-                    <span className="stat-value">{game.photo_res0 < 450 ? 'Oui' : 'Non'}</span>
+                    <span className="stat-value">{game.currentTouch[0] ? 'Oui' : 'Non'}</span>
                 </div>
                 <div className="stat-item">
                     <span className="stat-title">Laser 2 touché:</span>
-                    <span className="stat-value">{game.photo_res1 < 450 ? 'Oui' : 'Non'}</span>
+                    <span className="stat-value">{game.currentTouch[1] ? 'Oui' : 'Non'}</span>
                 </div>
                 <div className="stat-item">
                     <span className="stat-title">Laser 3 touché:</span>
-                    <span className="stat-value">{game.photo_res2 < 450 ? 'Oui' : 'Non'}</span>
+                    <span className="stat-value">{game.currentTouch[2] ? 'Oui' : 'Non'}</span>
                 </div>
                 <div className="stat-item">
                     <span className="stat-title">Trésor pris:</span>
