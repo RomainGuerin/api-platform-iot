@@ -24,3 +24,7 @@ npm run dev
 ```bash
 npm run build
 ```
+
+## Déploiement
+
+[Application react](https://tourmaline-faun-efb624.netlify.app/)
