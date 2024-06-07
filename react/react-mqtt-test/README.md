@@ -1,8 +1,26 @@
-# React + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+# Projet Laser Lockdown
 
-Currently, two official plugins are available:
+## Description
+Application qui permet de contrôler le jeu Laser Lockdown.  
+Cette application communique avec la [centrale](https://github.com/RomainGuerin/api-platform-iot/tree/master/socket), grâce à MQTT, pour recevoir et envoyer des informations.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Technologies et outils utilisés
+- React
+- Vite
+- MQTT
+
+## Installation
+```bash
+npm install
+```
+
+## Lancement
+```bash
+npm run dev
+```
+
+## Build
+```bash
+npm run build
+```
